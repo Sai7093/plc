@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ladder Logic Programming Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #2d3748; /* Slightly lighter dark background */
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            max-width: 1200px; /* Wider for ladder logic */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #63b3ed; /* Blue for titles */
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #4a5568;
+            padding-bottom: 0.5rem;
+        }
+        .io-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+        }
+        .io-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75rem;
+            border: 1px solid #4a5568;
+            border-radius: 0.5rem;
+            background-color: #2d3748;
+        }
+        .io-item label {
+            margin-bottom: 0.5rem;
+            color: #cbd5e0;
+            font-size: 0.9rem;
+        }
+        .output-light {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ef4444; /* Red for off */
+            border: 2px solid #dc2626;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .output-light.active {
+            background-color: #10b981; /* Green for on */
+            border-color: #059669;
+        }
+        button {
+            background-color: #4299e1; /* Blue button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .console {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: monospace;
+            min-height: 80px;
+            overflow-y: auto;
+            color: #a0aec0; /* Lighter grey for console text */
+        }
+        .console p {
+            margin: 0;
+            line-height: 1.4;
+        }
+        .ladder-editor-area {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            border-radius: 0.5rem;
+            min-height: 300px;
+            position: relative;
+            overflow-x: auto;
+            overflow-y: hidden; /* Only scroll horizontally for rungs */
+            padding: 1rem; /* Add some padding */
+        }
+        .rung {
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid #4a5568;
+            padding: 10px 0;
+            min-height: 80px; /* Ensure space for elements */
+            position: relative;
+            user-select: none; /* Prevent text selection */
+        }
+        .rung-number {
+            position: absolute;
+            left: -30px; /* Adjust as needed */
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9em;
+            color: #a0aec0;
+        }
+        .power-rail {
+            width: 10px;
+            height: 100%;
+            background-color: #63b3ed; /* Blue for power rail */
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        .element-placeholder {
+            width: 80px; /* Fixed width for each element */
+            height: 50px; /* Fixed height */
+            border: 1px dashed #4a5568;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 5px;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .ladder-element {
+            width: 80px; /* Fixed width for each element */
+            height: 50px; /* Fixed height */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #63b3ed;
+            border-radius: 0.3rem;
+            margin: 0 5px;
+            background-color: #2d3748;
+            color: #cbd5e0;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer; /* Changed to pointer as click now does something */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
+        }
+        .ladder-element.active-path {
+            box-shadow: 0 0 10px 3px #10b981, 0 0 5px #10b981 inset; /* Glow green when active */
+            border-color: #10b981;
+        }
+        .ladder-element span {
+            display: block;
+            margin-top: 2px;
+        }
+        /* Removed .delete-element styles as it's handled by modal now */
+        .add-element-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .rung-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .rung-selection-dropdown {
+            background-color: #1a202c;
+            color: #e2e8f0;
+            border: 1px solid #4a5568;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+        .rung-selection-dropdown option {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+
+        /* Drag and Drop Styles (kept as they still apply to elements) */
+        .ladder-element.dragging {
+            opacity: 0.5;
+            border: 2px dashed #63b3ed;
+        }
+        .ladder-element.drag-over-left {
+            border-left: 3px solid #10b981;
+        }
+        .ladder-element.drag-over-right {
+            border-right: 3px solid #10b981;
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: #2d3748;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.7);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            color: #e2e8f0;
+        }
+        .modal-content h3 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #4a5568;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .modal-buttons {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap; /* Allow buttons to wrap */
+        }
+        .modal-buttons button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            box-shadow: none; /* Remove default button shadow for modal buttons */
+            transform: none; /* Remove default button transform */
+            flex-grow: 1; /* Allow buttons to grow */
+        }
+        .modal-buttons button.confirm-btn {
+            background-color: #10b981;
+        }
+        .modal-buttons button.confirm-btn:hover {
+            background-color: #059669;
+        }
+        .modal-buttons button.cancel-btn {
+            background-color: #ef4444;
+        }
+        .modal-buttons button.cancel-btn:hover {
+            background-color: #dc2626;
+        }
+        .modal-buttons button.neutral-btn {
+            background-color: #4a5568;
+        }
+        .modal-buttons button.neutral-btn:hover {
+            background-color: #2d3748;
+        }
+    </style>
+</head>
+<body class="font-inter">
+    <div class="container">
+        <h1 class="text-3xl font-extrabold text-center text-blue-400 mb-4">Ladder Logic Simulator</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Inputs Panel -->
+            <div>
+                <h2 class="section-title">Inputs</h2>
+                <div class="io-panel">
+                    <div class="io-item">
+                        <label for="input1">Input 1 (I0.0)</label>
+                        <input type="checkbox" id="input1" data-tag="I0.0" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                    </div>
+                    <div class="io-item">
+                        <label for="input2">Input 2 (I0.1)</label>
+                        <input type="checkbox" id="input2" data-tag="I0.1" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                    </div>
+                    <div class="io-item">
+                        <label for="input3">Input 3 (I0.2)</label>
+                        <input type="checkbox" id="input3" data-tag="I0.2" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                    </div>
+                    <div class="io-item">
+                        <label for="input4">Input 4 (I0.3)</label>
+                        <input type="checkbox" id="input4" data-tag="I0.3" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outputs Panel -->
+            <div>
+                <h2 class="section-title">Outputs</h2>
+                <div class="io-panel">
+                    <div class="io-item">
+                        <label>Output 1 (Q0.0)</label>
+                        <div id="output1Light" data-tag="Q0.0" class="output-light"></div>
+                    </div>
+                    <div class="io-item">
+                        <label>Output 2 (Q0.1)</label>
+                        <div id="output2Light" data-tag="Q0.1" class="output-light"></div>
+                    </div>
+                    <div class="io-item">
+                        <label>Output 3 (Q0.2)</label>
+                        <div id="output3Light" data-tag="Q0.2" class="output-light"></div>
+                    </div>
+                    <div class="io-item">
+                        <label>Output 4 (Q0.3)</label>
+                        <div id="output4Light" data-tag="Q0.3" class="output-light"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ladder Logic Editor -->
+        <div class="logic-editor">
+            <h2 class="section-title">Ladder Logic Program</h2>
+            <div class="add-element-controls">
+                <button id="addNoContactBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                    NO Contact
+                </button>
+                <button id="addNcContactBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-x"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+                    NC Contact
+                </button>
+                <button id="addCoilBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle"><circle cx="12" cy="12" r="10"/></svg>
+                    Output Coil
+                </button>
+                <button id="addNewRungBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-square"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                    Add New Rung
+                </button>
+            </div>
+
+            <div class="rung-controls">
+                <label for="currentRungSelect" class="text-white text-lg">Edit Rung:</label>
+                <select id="currentRungSelect" class="rung-selection-dropdown"></select>
+                <button id="deleteRungBtn" class="bg-red-600 hover:bg-red-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    Delete Rung
+                </button>
+            </div>
+
+            <div id="ladderEditorArea" class="ladder-editor-area mt-4">
+                <!-- Ladder rungs will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Control & Console Panel -->
+        <div class="control-console-panel flex flex-col items-center gap-4">
+            <button id="runStopScanButton" class="bg-green-600 hover:bg-green-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Start Scan
+            </button>
+            <div class="flex flex-wrap justify-center gap-4 mt-2">
+                <button id="saveProjectBtn" class="bg-blue-600 hover:bg-blue-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Save Project
+                </button>
+                <input type="file" id="loadProjectInput" accept=".json" class="hidden">
+                <button id="loadProjectBtn" class="bg-purple-600 hover:bg-purple-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open"><path d="M6 15V4a2 2 0 0 1 2-2h7.93a2 2 0 0 1 1.66.88.82.82 0 0 0 .33.39l.86.86A2 2 0 0 0 21 6.17V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>
+                    Load Project
+                </button>
+            </div>
+
+            <h2 class="section-title mt-4 w-full text-center">Console Output</h2>
+            <div id="consoleOutput" class="console">
+                <p>Welcome to the Ladder Logic Simulator!</p>
+                <p>Add elements to rungs, set inputs, and click "Start Scan".</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modals -->
+    <div id="confirmModal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 id="confirmModalMessage">Are you sure?</h3>
+            <div class="modal-buttons">
+                <button class="confirm-btn">Yes</button>
+                <button class="cancel-btn">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="promptModal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 id="promptModalMessage">Enter Value:</h3>
+            <input type="text" id="promptModalInput" placeholder="Enter tag...">
+            <div class="modal-buttons">
+                <button class="confirm-btn">OK</button>
+                <button class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Element Edit Modal -->
+    <div id="elementEditModal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 id="elementEditModalMessage">Edit Element: <span id="currentElementTag"></span></h3>
+            <div class="modal-buttons">
+                <button id="changeTagBtn" class="neutral-btn">Change Tag</button>
+                <button id="convertToNoBtn" class="neutral-btn">Convert to NO Contact</button>
+                <button id="convertToNcBtn" class="neutral-btn">Convert to NC Contact</button>
+                <button id="convertToCoilBtn" class="neutral-btn">Convert to Output Coil</button>
+                <button id="deleteElementModalBtn" class="cancel-btn">Delete Element</button>
+                <button id="cancelEditBtn" class="confirm-btn">Done / Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Variables and Constants ---
+        const inputElements = {};
+        document.querySelectorAll('[data-tag^="I"]').forEach(el => {
+            inputElements[el.dataset.tag] = el;
+        });
+
+        const outputLights = {};
+        document.querySelectorAll('[data-tag^="Q"]').forEach(el => {
+            outputLights[el.dataset.tag] = el;
+        });
+
+        const ladderEditorArea = document.getElementById('ladderEditorArea');
+        const currentRungSelect = document.getElementById('currentRungSelect');
+        const consoleOutputDiv = document.getElementById('consoleOutput');
+        const runStopScanButton = document.getElementById('runStopScanButton');
+
+        // New Save/Load elements
+        const saveProjectBtn = document.getElementById('saveProjectBtn');
+        const loadProjectBtn = document.getElementById('loadProjectBtn');
+        const loadProjectInput = document.getElementById('loadProjectInput');
+
+
+        let ladderProgram = []; // Array of rungs, each rung is an array of elements
+        let currentRungIndex = 0; // The currently selected rung for editing
+        let scanInterval = null; // Holds the interval ID for continuous scanning
+
+        // Variables for Drag and Drop
+        let draggedElementData = null; // Stores { rungIndex, elementIndex } of the element being dragged
+        let dragTargetRung = null; // Stores the rung element currently being dragged over
+        let dragOverElement = null; // Stores the element currently being dragged over
+        let dragPosition = null; // 'before' or 'after' relative to dragOverElement
+
+        // Variables for Element Edit Modal
+        let activeElementData = { rungIndex: -1, elementIndex: -1 }; // Stores data of element currently being edited
+
+        // Data structure for a ladder element
+        const ELEMENT_TYPES = {
+            NO_CONTACT: 'NO_CONTACT',
+            NC_CONTACT: 'NC_CONTACT',
+            COIL: 'COIL'
+        };
+
+        const availableIOTags = {
+            inputs: ['I0.0', 'I0.1', 'I0.2', 'I0.3'],
+            outputs: ['Q0.0', 'Q0.1', 'Q0.2', 'Q0.3']
+        };
+
+        // --- Custom Modal Functions (Replacing alert/confirm/prompt) ---
+
+        /**
+         * Displays a custom confirmation modal.
+         * @param {string} message The message to display.
+         * @returns {Promise<boolean>} A promise that resolves to true if confirmed, false if cancelled.
+         */
+        function customConfirm(message) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('confirmModal');
+                const msgEl = document.getElementById('confirmModalMessage');
+                const confirmBtn = modal.querySelector('.confirm-btn');
+                const cancelBtn = modal.querySelector('.cancel-btn');
+
+                msgEl.textContent = message;
+                modal.classList.remove('hidden');
+
+                const handleConfirm = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+
+                confirmBtn.addEventListener('click', handleConfirm);
+                cancelBtn.addEventListener('click', handleCancel);
+            });
+        }
+
+        /**
+         * Displays a custom input prompt modal.
+         * @param {string} message The message to display.
+         * @param {string} defaultValue The default value for the input field.
+         * @returns {Promise<string|null>} A promise that resolves to the input value, or null if cancelled.
+         */
+        function customPrompt(message, defaultValue = '') {
+            return new Promise(resolve => {
+                const modal = document.getElementById('promptModal');
+                const msgEl = document.getElementById('promptModalMessage');
+                const inputEl = document.getElementById('promptModalInput');
+                const confirmBtn = modal.querySelector('.confirm-btn');
+                const cancelBtn = modal.querySelector('.cancel-btn');
+
+                msgEl.textContent = message;
+                inputEl.value = defaultValue;
+                modal.classList.remove('hidden');
+                inputEl.focus(); // Focus the input field
+
+                const handleConfirm = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    inputEl.removeEventListener('keydown', handleKeyDown);
+                    resolve(inputEl.value);
+                };
+
+                const handleCancel = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    inputEl.removeEventListener('keydown', handleKeyDown);
+                    resolve(null);
+                };
+
+                const handleKeyDown = (event) => {
+                    if (event.key === 'Enter') {
+                        handleConfirm();
+                    } else if (event.key === 'Escape') {
+                        handleCancel();
+                    }
+                };
+
+                confirmBtn.addEventListener('click', handleConfirm);
+                cancelBtn.addEventListener('click', handleCancel);
+                inputEl.addEventListener('keydown', handleKeyDown);
+            });
+        }
+
+
+        // --- Helper Functions ---
+
+        // Log messages to the console area
+        function logToConsole(message, type = 'info') {
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (type === 'error') {
+                p.style.color = '#ef4444';
+            } else if (type === 'warn') {
+                p.style.color = '#fbbf24';
+            } else if (type === 'success') {
+                p.style.color = '#10b981';
+            }
+            consoleOutputDiv.prepend(p);
+            while (consoleOutputDiv.children.length > 20) {
+                consoleOutputDiv.removeChild(consoleOutputDiv.lastChild);
+            }
+        }
+
+        // Read current state of physical inputs (checkboxes)
+        function readInputs() {
+            const inputsState = {};
+            for (const tag in inputElements) {
+                inputsState[tag] = inputElements[tag].checked;
+            }
+            return inputsState;
+        }
+
+        // Update visual representation of outputs (lights)
+        function updateOutputsDisplay(outputsState) {
+            console.log("Updating outputs display. Current outputsState:", outputsState); // Debugging line
+            for (const tag in outputLights) {
+                const outputElement = outputLights[tag];
+                if (outputElement) { // Ensure the element exists before trying to access its classList
+                    console.log(`Checking tag: ${tag}, state: ${outputsState[tag]}, element ID: ${outputElement.id}`); // Debugging line
+                    if (outputsState[tag]) {
+                        outputElement.classList.add('active');
+                    } else {
+                        outputElement.classList.remove('active');
+                    }
+                } else {
+                    console.warn(`Output element for tag ${tag} not found in outputLights mapping.`);
+                }
+            }
+        }
+
+        // Render the entire ladder program
+        function renderLadderProgram() {
+            ladderEditorArea.innerHTML = ''; // Clear existing
+            if (ladderProgram.length === 0) {
+                ladderEditorArea.innerHTML = '<p class="text-gray-400 text-center py-8">Click "Add New Rung" to start programming.</p>';
+                return;
+            }
+
+            ladderProgram.forEach((rungElements, rungNum) => {
+                const rungDiv = document.createElement('div');
+                rungDiv.className = 'rung relative group';
+                rungDiv.dataset.rungIndex = rungNum;
+
+                // Add drag/drop listeners to the rung itself for dropping into an empty rung
+                rungDiv.addEventListener('dragover', handleDragOverRung);
+                rungDiv.addEventListener('dragleave', handleDragLeaveRung);
+                rungDiv.addEventListener('drop', handleDropRung);
+
+                // Rung number label
+                const rungNumberLabel = document.createElement('span');
+                rungNumberLabel.className = 'rung-number';
+                rungNumberLabel.textContent = `Rung ${rungNum + 1}`;
+                rungDiv.appendChild(rungNumberLabel);
+
+                // Left power rail (visual only)
+                const leftRail = document.createElement('div');
+                leftRail.className = 'power-rail left-0';
+                rungDiv.appendChild(leftRail);
+
+                // Render elements within the rung
+                rungElements.forEach((element, elementIndex) => {
+                    const elDiv = document.createElement('div');
+                    elDiv.className = 'ladder-element relative';
+                    elDiv.dataset.elementType = element.type;
+                    elDiv.dataset.elementTag = element.tag;
+                    elDiv.dataset.rungIndex = rungNum;
+                    elDiv.dataset.elementIndex = elementIndex;
+                    elDiv.draggable = true; // Make elements draggable
+
+                    let symbol = '';
+                    switch (element.type) {
+                        case ELEMENT_TYPES.NO_CONTACT:
+                            symbol = '─[ ]─';
+                            break;
+                        case ELEMENT_TYPES.NC_CONTACT:
+                            symbol = '─[/]─';
+                            break;
+                        case ELEMENT_TYPES.COIL:
+                            symbol = '─( )─';
+                            break;
+                    }
+                    elDiv.innerHTML = `<span>${symbol}</span><span>${element.tag}</span>`;
+
+                    // Drag and drop event listeners for individual elements
+                    elDiv.addEventListener('dragstart', handleDragStart);
+                    elDiv.addEventListener('dragover', handleDragOverElement);
+                    elDiv.addEventListener('dragleave', handleDragLeaveElement);
+                    elDiv.addEventListener('drop', handleDropElement);
+                    elDiv.addEventListener('dragend', handleDragEnd);
+
+                    // Add click listener for the new element edit modal
+                    elDiv.addEventListener('click', (e) => openElementEditModal(rungNum, elementIndex));
+
+                    rungDiv.appendChild(elDiv);
+                });
+
+                // Right power rail (visual only, for coil alignment)
+                const rightRail = document.createElement('div');
+                rightRail.className = 'power-rail absolute right-0 top-0';
+                rungDiv.appendChild(rightRail);
+
+                ladderEditorArea.appendChild(rungDiv);
+            });
+            updateRungSelect();
+        }
+
+        // Add a new empty rung
+        function addNewRung() {
+            ladderProgram.push([]);
+            currentRungIndex = ladderProgram.length - 1; // Select the new rung
+            renderLadderProgram();
+            logToConsole(`Added new Rung ${ladderProgram.length}.`);
+        }
+
+        // Delete a rung
+        async function deleteRung() { // Made async for customConfirm
+            if (ladderProgram.length === 0) {
+                logToConsole("No rungs to delete.", 'warn');
+                return;
+            }
+            const confirmed = await customConfirm(`Are you sure you want to delete Rung ${currentRungIndex + 1}?`);
+            if (confirmed) {
+                ladderProgram.splice(currentRungIndex, 1);
+                if (currentRungIndex >= ladderProgram.length && ladderProgram.length > 0) {
+                    currentRungIndex = ladderProgram.length - 1; // Adjust index if last rung was deleted
+                } else if (ladderProgram.length === 0) {
+                    currentRungIndex = 0; // Reset if no rungs left
+                }
+                renderLadderProgram();
+                logToConsole(`Deleted Rung ${currentRungIndex + 1}.`); // Corrected log message
+            }
+        }
+
+        // Add an element to the currently selected rung
+        async function addElementToCurrentRung(type) { // Made async for customPrompt
+            if (ladderProgram.length === 0) {
+                logToConsole("Please add a rung first.", 'warn');
+                return;
+            }
+            const currentRung = ladderProgram[currentRungIndex];
+
+            // Validate that only one coil per rung (and it's the last)
+            if (type === ELEMENT_TYPES.COIL) {
+                if (currentRung.some(el => el.type === ELEMENT_TYPES.COIL)) {
+                    logToConsole("A rung can only have one Output Coil.", 'warn');
+                    return;
+                }
+            } else { // Contacts
+                if (currentRung.some(el => el.type === ELEMENT_TYPES.COIL)) {
+                    logToConsole("Cannot add contacts after an Output Coil on the same rung.", 'warn');
+                    return;
+                }
+            }
+
+            let tag = null;
+            let promptMessage = "";
+            if (type === ELEMENT_TYPES.NO_CONTACT || type === ELEMENT_TYPES.NC_CONTACT) {
+                promptMessage = "Enter Input Tag (e.g., I0.0, I0.1):";
+                tag = await customPrompt(promptMessage, "I0.0");
+                if (tag === null || tag.trim() === '') return; // User cancelled or empty
+                tag = tag.toUpperCase().trim();
+                if (!availableIOTags.inputs.includes(tag)) {
+                    logToConsole(`Invalid input tag: ${tag}. Must be one of: ${availableIOTags.inputs.join(', ')}`, 'error');
+                    return;
+                }
+            } else if (type === ELEMENT_TYPES.COIL) {
+                promptMessage = "Enter Output Tag (e.g., Q0.0, Q0.1):";
+                tag = await customPrompt(promptMessage, "Q0.0");
+                if (tag === null || tag.trim() === '') return; // User cancelled or empty
+                tag = tag.toUpperCase().trim();
+                if (!availableIOTags.outputs.includes(tag)) {
+                    logToConsole(`Invalid output tag: ${tag}. Must be one of: ${availableIOTags.outputs.join(', ')}`, 'error');
+                    return;
+                }
+            }
+
+            currentRung.push({ type, tag });
+            renderLadderProgram();
+            logToConsole(`Added ${type} (${tag}) to Rung ${currentRungIndex + 1}.`);
+        }
+
+        // Delete an element from a specific rung (called by deleteBtn handler or modal)
+        function deleteElementFromRung(rungIdx, elementIdx) {
+            ladderProgram[rungIdx].splice(elementIdx, 1);
+            renderLadderProgram();
+            logToConsole(`Element deleted from Rung ${rungIdx + 1}.`);
+        }
+
+        // Update the rung selection dropdown
+        function updateRungSelect() {
+            currentRungSelect.innerHTML = '';
+            if (ladderProgram.length === 0) {
+                const option = document.createElement('option');
+                option.value = -1;
+                option.textContent = "No Rungs";
+                currentRungSelect.appendChild(option);
+                currentRungSelect.disabled = true;
+                return;
+            }
+
+            currentRungSelect.disabled = false;
+            ladderProgram.forEach((_, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Rung ${index + 1}`;
+                currentRungSelect.appendChild(option);
+            });
+            currentRungSelect.value = currentRungIndex; // Set selected based on currentRungIndex
+        }
+
+        // --- Drag and Drop Logic ---
+        function handleDragStart(e) {
+            const rungIndex = parseInt(e.target.dataset.rungIndex);
+            const elementIndex = parseInt(e.target.dataset.elementIndex);
+            draggedElementData = { rungIndex, elementIndex };
+
+            // Set drag data (needed for drop event to work)
+            e.dataTransfer.setData('text/plain', JSON.stringify(draggedElementData));
+            e.dataTransfer.effectAllowed = 'move';
+
+            // Add a class to the original element to make it appear "ghosted"
+            setTimeout(() => {
+                e.target.classList.add('dragging');
+            }, 0);
+        }
+
+        function handleDragOverElement(e) {
+            e.preventDefault(); // Allows drop
+            const targetElement = e.target.closest('.ladder-element');
+            if (!targetElement) return;
+
+            // Only allow dragging within the same rung
+            const targetRungIndex = parseInt(targetElement.dataset.rungIndex);
+            if (targetRungIndex !== draggedElementData.rungIndex) {
+                return;
+            }
+
+            // Determine if dragging before or after the target element
+            const rect = targetElement.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+
+            // Clear previous drag-over visual
+            if (dragOverElement) {
+                dragOverElement.classList.remove('drag-over-left', 'drag-over-right');
+            }
+
+            if (x < rect.width / 2) {
+                // Dragging to the left half of the target element
+                targetElement.classList.remove('drag-over-right');
+                targetElement.classList.add('drag-over-left');
+                dragPosition = 'before';
+            } else {
+                // Dragging to the right half of the target element
+                targetElement.classList.remove('drag-over-left');
+                targetElement.classList.add('drag-over-right');
+                dragPosition = 'after';
+            }
+            dragOverElement = targetElement;
+        }
+
+        function handleDragLeaveElement(e) {
+            if (dragOverElement) {
+                dragOverElement.classList.remove('drag-over-left', 'drag-over-right');
+                dragOverElement = null;
+                dragPosition = null;
+            }
+        }
+
+        function handleDragOverRung(e) {
+            e.preventDefault(); // Allows drop
+            const targetRung = e.target.closest('.rung');
+            if (!targetRung) return;
+
+            // Only allow dragging within the same rung
+            const targetRungIndex = parseInt(targetRung.dataset.rungIndex);
+            if (targetRungIndex !== draggedElementData.rungIndex) {
+                return;
+            }
+
+            // If dragging over an empty part of the rung (not an element)
+            if (!e.target.closest('.ladder-element')) {
+                // No specific element to highlight, but still allow drop within the rung
+            }
+        }
+
+        function handleDragLeaveRung(e) {
+            // This can be tricky due to nested elements.
+            // Clear general rung drag-over if implemented, or rely on element specific ones.
+        }
+
+        async function handleDropElement(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Stop propagation to prevent rung drop event firing
+
+            if (dragOverElement) {
+                dragOverElement.classList.remove('drag-over-left', 'drag-over-right');
+            }
+
+            const targetElement = e.target.closest('.ladder-element');
+            if (!targetElement || !draggedElementData) return;
+
+            const targetRungIndex = parseInt(targetElement.dataset.rungIndex);
+            const targetElementIndex = parseInt(targetElement.dataset.elementIndex);
+            const draggedType = ladderProgram[draggedElementData.rungIndex][draggedElementData.elementIndex].type;
+
+            // Ensure dropping in the same rung
+            if (draggedElementData.rungIndex !== targetRungIndex) {
+                logToConsole("Cannot drag elements between different rungs in this simulator.", 'error');
+                return;
+            }
+
+            // Determine the new index for insertion
+            let newIndex = targetElementIndex;
+            if (dragPosition === 'after') {
+                newIndex++;
+            }
+
+            // Handle moving a coil: Must remain the last element
+            if (draggedType === ELEMENT_TYPES.COIL) {
+                const currentRungLength = ladderProgram[targetRungIndex].length;
+                // A coil can only be dropped if it remains the last element
+                if (newIndex !== currentRungLength - 1 && newIndex !== currentRungLength) { // Allow dropping at the very end
+                    logToConsole("An Output Coil must remain the last element in the rung. Drag operation cancelled.", 'warn');
+                    return;
+                }
+                 // If the target is the coil itself and it's not changing position, do nothing
+                if (draggedElementData.elementIndex === newIndex || (dragPosition === 'after' && draggedElementData.elementIndex === newIndex -1 )) {
+                    return;
+                }
+            } else { // Handle moving a contact
+                const currentRung = ladderProgram[targetRungIndex];
+                const coilIndex = currentRung.findIndex(el => el.type === ELEMENT_TYPES.COIL);
+                if (coilIndex !== -1 && newIndex > coilIndex) {
+                    logToConsole("Contacts cannot be moved after an Output Coil. Drag operation cancelled.", 'warn');
+                    return;
+                }
+            }
+
+            const oldRung = ladderProgram[draggedElementData.rungIndex];
+            const [movedElement] = oldRung.splice(draggedElementData.elementIndex, 1);
+
+            // Adjust newIndex if moving within the same array and moving from left to right
+            if (draggedElementData.elementIndex < newIndex) {
+                newIndex--;
+            }
+
+            ladderProgram[targetRungIndex].splice(newIndex, 0, movedElement);
+            renderLadderProgram();
+            logToConsole(`Moved element to Rung ${targetRungIndex + 1}, position ${newIndex + 1}.`, 'success');
+
+            draggedElementData = null;
+            dragOverElement = null;
+            dragPosition = null;
+        }
+
+        async function handleDropRung(e) {
+            e.preventDefault();
+            // This handles dropping an element into an *empty* rung or onto the rung itself where no specific element is targeted
+            const targetRung = e.target.closest('.rung');
+            if (!targetRung || !draggedElementData) return;
+
+            const targetRungIndex = parseInt(targetRung.dataset.rungIndex);
+            const currentRungElements = ladderProgram[targetRungIndex];
+            const draggedElementType = ladderProgram[draggedElementData.rungIndex][draggedElementData.elementIndex].type;
+
+            // Only allow dragging within the same rung for now
+            if (draggedElementData.rungIndex !== targetRungIndex) {
+                 logToConsole("Cannot drag elements between different rungs in this simulator.", 'error');
+                 return;
+            }
+
+            // If dropping onto an empty rung, or if the current rung has elements but it's not a specific element drop
+            if (currentRungElements.length === 0) {
+                 if (draggedElementType === ELEMENT_TYPES.COIL) {
+                     logToConsole("An Output Coil cannot be the only element on an empty rung. Add a contact first.", 'warn');
+                     return;
+                 }
+                // Move the element to the empty rung
+                const oldRung = ladderProgram[draggedElementData.rungIndex];
+                const [elementToMove] = oldRung.splice(draggedElementData.elementIndex, 1);
+                ladderProgram[targetRungIndex].push(elementToMove);
+                renderLadderProgram();
+                logToConsole(`Moved element to empty Rung ${targetRungIndex + 1}.`, 'success');
+            }
+            // If dropping over a rung that already has elements, but not directly on an element,
+            // assume it means drop at the end of the rung if allowed.
+            else if (draggedElementType === ELEMENT_TYPES.COIL && currentRungElements.length > 0 && e.target.closest('.ladder-element') === null) {
+                // If dropping a coil onto a rung with elements, attempt to place it at the end
+                const oldRung = ladderProgram[draggedElementData.rungIndex];
+                const [elementToMove] = oldRung.splice(draggedElementData.elementIndex, 1);
+                ladderProgram[targetRungIndex].push(elementToMove);
+                renderLadderProgram();
+                logToConsole(`Moved coil to end of Rung ${targetRungIndex + 1}.`, 'success');
+            }
+            else {
+                // This case is handled by handleDropElement if dropping onto an existing element
+                // If it reaches here, it means drop was attempted on rung background with existing elements
+                // and it wasn't a coil being moved to the end.
+                 logToConsole("Invalid drop location. Elements can only be dragged within the same rung and coils must remain at the end.", 'warn');
+            }
+
+
+            draggedElementData = null;
+            dragOverElement = null;
+            dragPosition = null;
+        }
+
+
+        function handleDragEnd(e) {
+            // Remove the dragging class from the original element
+            e.target.classList.remove('dragging');
+            // Clear any lingering drag-over highlights
+            if (dragOverElement) {
+                dragOverElement.classList.remove('drag-over-left', 'drag-over-right');
+            }
+            draggedElementData = null;
+            dragOverElement = null;
+            dragPosition = null;
+        }
+
+
+        // --- Element Edit Modal Logic ---
+        const elementEditModal = document.getElementById('elementEditModal');
+        const currentElementTagSpan = document.getElementById('currentElementTag');
+        const changeTagBtn = document.getElementById('changeTagBtn');
+        const convertToNoBtn = document.getElementById('convertToNoBtn');
+        const convertToNcBtn = document.getElementById('convertToNcBtn');
+        const convertToCoilBtn = document.getElementById('convertToCoilBtn');
+        const deleteElementModalBtn = document.getElementById('deleteElementModalBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+        async function openElementEditModal(rungIdx, elementIdx) {
+            activeElementData = { rungIndex: rungIdx, elementIndex: elementIdx };
+            const element = ladderProgram[rungIdx][elementIdx];
+
+            currentElementTagSpan.textContent = element.tag;
+
+            // Reset button visibility
+            changeTagBtn.classList.remove('hidden');
+            convertToNoBtn.classList.add('hidden');
+            convertToNcBtn.classList.add('hidden');
+            convertToCoilBtn.classList.add('hidden');
+
+            // Set button visibility based on element type and position
+            if (element.type === ELEMENT_TYPES.NO_CONTACT) {
+                convertToNcBtn.classList.remove('hidden');
+            } else if (element.type === ELEMENT_TYPES.NC_CONTACT) {
+                convertToNoBtn.classList.remove('hidden');
+            }
+
+            // Check if it's possible to convert to coil
+            const currentRung = ladderProgram[rungIdx];
+            const isLastElementInRung = (elementIdx === currentRung.length - 1);
+            const hasExistingCoil = currentRung.some(el => el.type === ELEMENT_TYPES.COIL);
+
+            if ((element.type === ELEMENT_TYPES.NO_CONTACT || element.type === ELEMENT_TYPES.NC_CONTACT) && isLastElementInRung && !hasExistingCoil) {
+                convertToCoilBtn.classList.remove('hidden');
+            }
+
+            elementEditModal.classList.remove('hidden');
+        }
+
+        // Event listeners for Element Edit Modal buttons
+        changeTagBtn.addEventListener('click', async () => {
+            elementEditModal.classList.add('hidden'); // Hide modal temporarily for prompt
+            const element = ladderProgram[activeElementData.rungIndex][activeElementData.elementIndex];
+            let newTag = null;
+            let promptMessage = `Enter new tag for ${element.tag}:`;
+            let defaultTag = element.tag;
+
+            if (element.type === ELEMENT_TYPES.COIL) {
+                newTag = await customPrompt(promptMessage, defaultTag);
+                if (newTag === null || newTag.trim() === '') {
+                    logToConsole("Tag change cancelled or empty.", 'warn');
+                    renderLadderProgram(); // Re-render to ensure no lingering issues
+                    return;
+                }
+                newTag = newTag.toUpperCase().trim();
+                if (!availableIOTags.outputs.includes(newTag)) {
+                    logToConsole(`Invalid output tag: ${newTag}. Must be one of: ${availableIOTags.outputs.join(', ')}`, 'error');
+                    renderLadderProgram();
+                    return;
+                }
+            } else { // Contacts
+                newTag = await customPrompt(promptMessage, defaultTag);
+                if (newTag === null || newTag.trim() === '') {
+                    logToConsole("Tag change cancelled or empty.", 'warn');
+                    renderLadderProgram();
+                    return;
+                }
+                newTag = newTag.toUpperCase().trim();
+                if (!availableIOTags.inputs.includes(newTag)) {
+                    logToConsole(`Invalid input tag: ${newTag}. Must be one of: ${availableIOTags.inputs.join(', ')}`, 'error');
+                    renderLadderProgram();
+                    return;
+                }
+            }
+            
+            element.tag = newTag;
+            renderLadderProgram();
+            logToConsole(`Changed tag to ${newTag} for element in Rung ${activeElementData.rungIndex + 1}, position ${activeElementData.elementIndex + 1}.`, 'success');
+        });
+
+        convertToNoBtn.addEventListener('click', () => {
+            const element = ladderProgram[activeElementData.rungIndex][activeElementData.elementIndex];
+            if (element.type === ELEMENT_TYPES.NC_CONTACT) {
+                element.type = ELEMENT_TYPES.NO_CONTACT;
+                logToConsole(`Converted element to NO Contact in Rung ${activeElementData.rungIndex + 1}, position ${activeElementData.elementIndex + 1}.`, 'success');
+            }
+            elementEditModal.classList.add('hidden');
+            renderLadderProgram();
+        });
+
+        convertToNcBtn.addEventListener('click', () => {
+            const element = ladderProgram[activeElementData.rungIndex][activeElementData.elementIndex];
+            if (element.type === ELEMENT_TYPES.NO_CONTACT) {
+                element.type = ELEMENT_TYPES.NC_CONTACT;
+                logToConsole(`Converted element to NC Contact in Rung ${activeElementData.rungIndex + 1}, position ${activeElementData.elementIndex + 1}.`, 'success');
+            }
+            elementEditModal.classList.add('hidden');
+            renderLadderProgram();
+        });
+
+        convertToCoilBtn.addEventListener('click', async () => {
+            const rungIdx = activeElementData.rungIndex;
+            const elementIdx = activeElementData.elementIndex;
+            const element = ladderProgram[rungIdx][elementIdx];
+            const currentRung = ladderProgram[rungIdx];
+
+            // Re-validate just in case (though buttons are hidden if invalid)
+            const isLastElementInRung = (elementIdx === currentRung.length - 1);
+            const hasExistingCoil = currentRung.some(el => el.type === ELEMENT_TYPES.COIL);
+
+            if ((element.type === ELEMENT_TYPES.NO_CONTACT || element.type === ELEMENT_TYPES.NC_CONTACT) && isLastElementInRung && !hasExistingCoil) {
+                elementEditModal.classList.add('hidden'); // Hide modal temporarily for prompt
+                const newCoilTag = await customPrompt("Enter Output Tag for new Coil (e.g., Q0.0):", "Q0.0");
+                if (newCoilTag === null || newCoilTag.trim() === '') {
+                    logToConsole("Coil conversion cancelled or empty tag.", 'warn');
+                    renderLadderProgram(); // Re-render to ensure no lingering issues
+                    return;
+                }
+                const tag = newCoilTag.toUpperCase().trim();
+                if (!availableIOTags.outputs.includes(tag)) {
+                    logToConsole(`Invalid output tag: ${tag}. Must be one of: ${availableIOTags.outputs.join(', ')}`, 'error');
+                    renderLadderProgram();
+                    return;
+                }
+
+                element.type = ELEMENT_TYPES.COIL;
+                element.tag = tag;
+                logToConsole(`Converted element to Output Coil (${tag}) in Rung ${rungIdx + 1}, position ${elementIdx + 1}.`, 'success');
+            } else {
+                logToConsole("Cannot convert to Coil: not last element or coil already exists.", 'error');
+            }
+            elementEditModal.classList.add('hidden');
+            renderLadderProgram();
+        });
+
+        deleteElementModalBtn.addEventListener('click', async () => {
+            elementEditModal.classList.add('hidden'); // Hide modal immediately
+            const confirmed = await customConfirm(`Delete element "${ladderProgram[activeElementData.rungIndex][activeElementData.elementIndex].tag}"?`);
+            if (confirmed) {
+                deleteElementFromRung(activeElementData.rungIndex, activeElementData.elementIndex);
+            }
+        });
+
+        cancelEditBtn.addEventListener('click', () => {
+            elementEditModal.classList.add('hidden');
+            // No action needed other than hiding modal, as changes are applied via other buttons
+        });
+
+
+        // --- Core PLC Scan Logic ---
+        function runPLCSimulationScan() {
+            const inputsState = readInputs();
+            const outputsState = {}; // Initialize outputs for this scan
+
+            // Initialize all outputs to false before evaluation (common PLC behavior)
+            availableIOTags.outputs.forEach(tag => outputsState[tag] = false);
+
+            logToConsole("--- PLC Scan Cycle ---", 'info');
+
+            ladderProgram.forEach((rungElements, rungNum) => {
+                let powerFlow = true; // Assume power flow at the start of the rung
+                let hasCoil = false;
+                const activeElementsInRung = []; // Store indices of elements on the active path
+
+                // Iterate through elements in the current rung
+                for (let i = 0; i < rungElements.length; i++) {
+                    const element = rungElements[i];
+
+                    // If a coil is encountered, it's the end of the input logic for this rung
+                    if (element.type === ELEMENT_TYPES.COIL) {
+                        hasCoil = true;
+                        // The coil's state is determined by the powerFlow BEFORE it
+                        outputsState[element.tag] = powerFlow; // Set output based on accumulated power flow
+                        if (powerFlow) {
+                            activeElementsInRung.push(i); // Mark coil as active if energized
+                        }
+                        // No more logic elements affect power flow after a coil on a simple rung
+                        break;
+                    }
+
+                    let elementConditionMet = false;
+                    switch (element.type) {
+                        case ELEMENT_TYPES.NO_CONTACT:
+                            elementConditionMet = inputsState[element.tag];
+                            break;
+                        case ELEMENT_TYPES.NC_CONTACT:
+                            elementConditionMet = !inputsState[element.tag];
+                            break;
+                        default:
+                            // Should not happen with current element types, but good for robustness
+                            logToConsole(`Unknown element type: ${element.type}`, 'error');
+                            powerFlow = false; // Break power flow on unknown element
+                            break;
+                    }
+
+                    // Power flow only continues if current powerFlow AND element condition are true
+                    powerFlow = powerFlow && elementConditionMet;
+
+                    if (powerFlow) { // Only mark the element as active if power is flowing THROUGH it
+                        activeElementsInRung.push(i);
+                    }
+                }
+
+                // Visual feedback for active rungs/elements
+                const rungDiv = ladderEditorArea.querySelector(`[data-rung-index="${rungNum}"]`);
+                if (rungDiv) {
+                    // Clear previous active states on ALL elements in this rung
+                    rungDiv.querySelectorAll('.ladder-element').forEach(el => el.classList.remove('active-path'));
+
+                    // Apply new active states for elements on the power path
+                    activeElementsInRung.forEach(idx => {
+                        const elDiv = rungDiv.querySelector(`[data-element-index="${idx}"]`);
+                        if (elDiv) {
+                            elDiv.classList.add('active-path');
+                        }
+                    });
+
+                    // Explicitly handle coil highlighting based on its final state (after logic)
+                    const coilElement = rungDiv.querySelector(`[data-element-type="${ELEMENT_TYPES.COIL}"]`);
+                    if (coilElement && outputsState[coilElement.dataset.elementTag]) {
+                        coilElement.classList.add('active-path');
+                    } else if (coilElement) {
+                        coilElement.classList.remove('active-path');
+                    }
+                }
+
+                // Log the outcome for the current rung
+                if (hasCoil) {
+                    const coilTag = rungElements.find(el => el.type === ELEMENT_TYPES.COIL)?.tag;
+                    if (coilTag) {
+                        logToConsole(`Rung ${rungNum + 1}: Output ${coilTag} is ${outputsState[coilTag] ? 'ON' : 'OFF'}.`);
+                    }
+                } else {
+                    logToConsole(`Rung ${rungNum + 1}: No output coil found or incomplete rung.`, 'warn');
+                }
+            });
+
+            updateOutputsDisplay(outputsState); // Update UI outputs after all rungs are evaluated
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('addNoContactBtn').addEventListener('click', () => addElementToCurrentRung(ELEMENT_TYPES.NO_CONTACT));
+        document.getElementById('addNcContactBtn').addEventListener('click', () => addElementToCurrentRung(ELEMENT_TYPES.NC_CONTACT));
+        document.getElementById('addCoilBtn').addEventListener('click', () => addElementToCurrentRung(ELEMENT_TYPES.COIL));
+        document.getElementById('addNewRungBtn').addEventListener('click', addNewRung);
+        document.getElementById('deleteRungBtn').addEventListener('click', deleteRung);
+
+        currentRungSelect.addEventListener('change', (event) => {
+            currentRungIndex = parseInt(event.target.value);
+            logToConsole(`Editing Rung ${currentRungIndex + 1}.`);
+        });
+
+        runStopScanButton.addEventListener('click', () => {
+            if (scanInterval) {
+                // Stop scan
+                clearInterval(scanInterval);
+                scanInterval = null;
+                runStopScanButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                runStopScanButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                runStopScanButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Scan`;
+                logToConsole("PLC Scan Stopped.", 'warn');
+            } else {
+                // Start scan
+                runPLCSimulationScan(); // Run one immediately
+                scanInterval = setInterval(runPLCSimulationScan, 1000); // Scan every 1 second
+                runStopScanButton.classList.remove('bg-green-600', 'hover:bg-red-700');
+                runStopScanButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                runStopScanButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Stop Scan`;
+                logToConsole("PLC Scan Started (1 second interval).", 'success');
+            }
+        });
+
+        // Save Project functionality
+        saveProjectBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(ladderProgram, null, 2); // Pretty print JSON
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ladder_program_backup.json';
+            document.body.appendChild(a); // Append to body to make it clickable
+            a.click(); // Programmatically click the link to trigger download
+            document.body.removeChild(a); // Clean up
+            URL.revokeObjectURL(url); // Release the object URL
+            logToConsole("Project saved successfully!", 'success');
+        });
+
+        // Load Project functionality
+        loadProjectBtn.addEventListener('click', () => {
+            loadProjectInput.click(); // Trigger the hidden file input click
+        });
+
+        loadProjectInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                logToConsole("No file selected for loading.", 'warn');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const loadedData = JSON.parse(e.target.result);
+                    // Basic validation to ensure it's a valid ladder program structure
+                    if (Array.isArray(loadedData) && loadedData.every(rung => Array.isArray(rung))) {
+                        const confirmed = await customConfirm("Loading a new project will clear the current program. Continue?");
+                        if (confirmed) {
+                            ladderProgram = loadedData;
+                            currentRungIndex = 0; // Reset to first rung or 0 if empty
+                            if (ladderProgram.length > 0) {
+                                currentRungIndex = 0;
+                            } else {
+                                // If loaded program is empty, add a new rung
+                                addNewRung();
+                            }
+                            renderLadderProgram();
+                            logToConsole("Project loaded successfully!", 'success');
+                        } else {
+                            logToConsole("Project load cancelled.", 'info');
+                        }
+                    } else {
+                        logToConsole("Invalid project file format. Please load a valid JSON file.", 'error');
+                    }
+                } catch (error) {
+                    logToConsole(`Error loading project: ${error.message}`, 'error');
+                    console.error("Error parsing JSON:", error);
+                }
+            };
+            reader.onerror = () => {
+                logToConsole("Failed to read file.", 'error');
+            };
+            reader.readAsText(file);
+        });
+
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            addNewRung(); // Add a default empty rung
+            renderLadderProgram();
+            updateRungSelect();
+        });
+
+    </script>
+</body>
+</html>
